@@ -9,7 +9,7 @@ import {
   Image,
   AsyncStorage,
   TouchableHighlight,
-  KeyboardAvoidingView,
+  Alert,
   ScrollView
 } from "react-native";
 
@@ -52,13 +52,16 @@ export default class ContactSelected extends Component {
   }
 
   AddContact() {
-    console.log(this.state.userToken, this.state.contactId, this.state.note);
 
     apiBack.AddContactNote(
       this.state.userToken,
       this.state.contactId,
       this.state.note
-    );
+    ).then(() => {
+      Alert.alert(
+        "Note saved!",
+      );
+    })
   }
 
   AddTag() {
@@ -67,7 +70,12 @@ export default class ContactSelected extends Component {
       this.state.userToken,
       this.state.contactId,
       this.state.tags
-    );
+    ).then(() => {
+      this.props.navigation.state.params.list
+      Alert.alert(
+        "Tags saved!",
+      );
+    })
   }
 
   
@@ -94,14 +102,20 @@ export default class ContactSelected extends Component {
         note: "";
       }
 
-      console.log(note);
+      
+      tagsFound = userProfile.data.contacts.filter(
+        contact => contact.contact === contactInfo.data._id
+      )
+
+      console.log("tags",tagsFound[0].tags);
 
       this.setState({
         ...this.state,
         userToken: token,
         contactSelected: contactInfo.data,
         userId: userProfile.data.id,
-        note: userProfile.data.notes.length > 0 ? note : ""
+        note: userProfile.data.notes.length > 0 ? note : "",
+        tags: tagsFound[0].tags
       });
     } catch (error) {
       console.log(error);
@@ -115,6 +129,11 @@ export default class ContactSelected extends Component {
       receiver: this.state.contactId
     });
   };
+
+  _goBack = () => {
+    this.props.navigation.state.params.list()
+    this.props.navigation.navigate("Contacts")
+  }
 
   render() {
     console.log(this.state.contactId);
@@ -132,7 +151,7 @@ export default class ContactSelected extends Component {
               />
             </View>
 
-            <TouchableHighlight onPress={() => this.props.navigation.pop()}>
+            <TouchableHighlight onPress={() => this._goBack()}>
               <View style={styles.arrow}>
                 <SvgUri
                   width="20"
@@ -219,7 +238,7 @@ export default class ContactSelected extends Component {
             />
             <View style={styles.add}>
               <View>
-                <TouchableHighlight onPress={() => this.AddContact()}>
+                <TouchableHighlight onPress={() => this.AddTag()}>
                   <SvgUri
                     width="30"
                     height="30"
@@ -234,7 +253,7 @@ export default class ContactSelected extends Component {
                 <Text style={[styles.text]}>Add tags</Text>
                 <View style={{ width: "80%", height:"100%"}}>
                   <Tags
-                    initialText="monkey"
+    
                     textInputProps={{
                       placeholder: "Any type of animal"
                     }}

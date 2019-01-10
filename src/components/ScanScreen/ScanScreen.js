@@ -36,7 +36,7 @@ export default class ScanScreen extends Component {
       qrStatus: true,
       contactUser: null,
       hasCameraPermission: null,
-      cameraReady: false
+      cameraReady: true
     };
   }
 
@@ -70,7 +70,7 @@ export default class ScanScreen extends Component {
   };
 
   _closeModal = () => {
-    this.setState({ ...this.state, isModalVisible: false });
+    this.setState({ ...this.state, isModalVisible: false, cameraReady:true });
   };
 
   loadDataApp = async () => {
@@ -111,8 +111,6 @@ export default class ScanScreen extends Component {
           cameraReady: false
         });
       });
-    } else {
-      this.setState({...this.state, cameraReady: true})
     }
 
   }
@@ -203,9 +201,7 @@ export default class ScanScreen extends Component {
 
 const styles = StyleSheet.create({
   modal: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    position: "absolute",
     height: 500
   },
   centerText: {

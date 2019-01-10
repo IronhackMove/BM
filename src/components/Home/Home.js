@@ -16,8 +16,7 @@ import { Text, Button } from "react-native-elements";
 import EventModal from "../Events/EventModal/EventModal";
 import { Days, meetupsIfError } from "../utils/utils";
 
-import io from "socket.io-client";
-import { URL } from "../utils/utils";
+const _ = require("lodash");
 
 var moment = require("moment");
 
@@ -102,12 +101,44 @@ export default class Home extends React.Component {
     this.loadPosition();
   }
 
-  setModalVisible = (visible, event) => {
-    this.setState({
-      ...this.state,
-      modalVisible: visible,
-      eventSelected: event
-    });
+  setModalVisible = async (visible, event) => {
+    let parti = false;
+    const participation = await apiBack.GetParticipationStatus(
+      event,
+      this.state.user._id
+    );
+    console.log(participation);
+
+    const participantsMeetup = await apiBack.GetParticipantsMeetup(event);
+    console.log(participantsMeetup);
+
+  
+
+    if (participation !== null) {
+      parti = _.filter(participation.participants, [
+        "contact._id",
+        this.state.user._id
+      ])[0].participation;
+      trueParticipants = _.groupBy(participantsMeetup.participants, "participation");
+
+      console.log(trueParticipants)
+
+      this.setState({
+        ...this.state,
+        eventParticipation: parti,
+        modalVisible: visible,
+        eventSelected: event,
+        trueParticipants: trueParticipants
+      });
+    } else {
+      this.setState({
+        ...this.state,
+        eventParticipation: parti,
+        modalVisible: visible,
+        eventSelected: event,
+        trueParticipants: []
+      });
+    }
   };
 
   closeModal = visible => {
@@ -155,9 +186,8 @@ export default class Home extends React.Component {
         });
       });
 
-      const meets = await apiBack.SaveMeetups(token, meetups);
-
       joinMeetups.unshift(iron);
+      const meets = await apiBack.SaveMeetups(token, joinMeetups);
       joinMeetups.unshift({});
 
       this.setState({
@@ -170,9 +200,14 @@ export default class Home extends React.Component {
       });
     } catch (error) {
       const token = await AsyncStorage.getItem("userToken");
+      const userProfile = await apiBack.GetUserProfile(token);
       const arrayOfMeetups = meetupsIfError;
       const meets = await apiBack.SaveMeetups(token, arrayOfMeetups);
-      this.setState({ loadingContent: false, events: meetupsIfError });
+      this.setState({
+        loadingContent: false,
+        events: meetupsIfError,
+        user: userProfile.data
+      });
     }
   };
 
@@ -182,6 +217,11 @@ export default class Home extends React.Component {
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, options);
     });
+  };
+
+  _getParticipation = evento => {
+    console.log(evento);
+    // const participation = apiBack.GetParticipationStatus(this.state.eventId, this.state.userId)
   };
 
   _keyExtractor = (item, index) => item.id;
@@ -262,6 +302,10 @@ export default class Home extends React.Component {
   };
 
   render() {
+    if (this.state.eventParticipation !== null) {
+      console.log(this.state.eventParticipation);
+    }
+
     return (
       <View style={styles.container}>
         <View style={styles.logo}>
@@ -286,11 +330,18 @@ export default class Home extends React.Component {
               </View>
             )}
 
-            <EventModal
-              eventSelected={this.state.eventSelected}
-              closeModal={this.closeModal}
-              visible={this.state.modalVisible}
-            />
+            {this.state.user !== null &&
+              this.state.eventParticipation !== null && (
+                <EventModal
+                  userId={this.state.user._id}
+                  eventParticipation={this.state.eventParticipation}
+                  eventSelected={this.state.eventSelected}
+                  closeModal={this.closeModal}
+                  visible={this.state.modalVisible}
+                  trueParticipants={this.state.trueParticipants}
+                />
+              )}
+
             {this.state.loadingContent === false && (
               <View style={{ position: "absolute", left: 150 }}>
                 <Image

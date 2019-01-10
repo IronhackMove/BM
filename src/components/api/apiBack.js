@@ -54,6 +54,23 @@ const apiBack = {
       .then(response => response.data);
   },
 
+  AddParticipationMeetup: (meetup, idUser, participation) => {
+    return axios
+    .post(`${URL}/auth/addParticipationMeetup/`, {meetupId: meetup.id, idUser: idUser, participation: participation})
+      .then(response => response.data);
+  },
+
+  async GetParticipationStatus(meetup, idUser) {
+
+    const response = await axios.post(`${URL}/auth/getParticipation/`, {meetupId: meetup.id, idUser: idUser})
+    return response.data;
+  },
+
+  async GetParticipantsMeetup(meetup) {
+    const response = await axios.post(`${URL}/auth/getParticipantsMeetup/`, {meetupId: meetup.id})
+    return response.data;
+  },
+
   GetContactNote: (idContact) => {
     return axios
     .get(`${URL}/auth/getContactNote/${idContact}`)
@@ -77,10 +94,16 @@ const apiBack = {
       .then(response => response.data);
   },
 
+  CheckIfContactSaved: (userId, contactId) => {
+    var ids = [userId, contactId];
+    console.log(ids)
+    return axios
+      .post(`${URL}/auth/checkContactSaved/`, { ids: ids })
+      .then(response => response.data);
+  },
 
   SaveUserContact: (userId, contactId, meetup) => {
     var ids = [userId, contactId];
-    console.log(ids);
     return axios
       .post(`${URL}/auth/saveContact/`, { ids: ids, meetup: meetup })
       .then(response => response.data);

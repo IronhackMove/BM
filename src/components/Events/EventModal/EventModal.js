@@ -11,9 +11,13 @@ import {
   TouchableHighlight
 } from "react-native";
 
+import { ListItem, Avatar } from "react-native-elements";
+
+import Icon from "react-native-vector-icons/Ionicons";
 import SvgUri from "react-native-svg-uri";
 
 import { Days } from "../../utils/utils";
+import apiBack from "../../api/apiBack";
 
 var moment = require("moment");
 
@@ -22,13 +26,10 @@ function wp(percentage) {
   return Math.round(value);
 }
 
-function strip_html_tags(str)
-{
-   if ((str===null) || (str===''))
-       return false;
-  else
-   str = str.toString();
-  return str.replace(/<[^>]*>/g, '');
+function strip_html_tags(str) {
+  if (str === null || str === "") return false;
+  else str = str.toString();
+  return str.replace(/<[^>]*>/g, "");
 }
 
 const { width: viewportWidth, height: viewportHeight } = Dimensions.get(
@@ -37,15 +38,50 @@ const { width: viewportWidth, height: viewportHeight } = Dimensions.get(
 
 const sliderWidth = wp(100);
 
+const list = [
+  {
+    name: 'Amy Farha',
+    avatar_url: 'https://s3.amazonaws.com/uifaces/faces/twitter/ladylexy/128.jpg',
+    subtitle: 'Vice President'
+  },
+  {
+    name: 'Chris Jackson',
+    avatar_url: 'https://s3.amazonaws.com/uifaces/faces/twitter/adhamdannaway/128.jpg',
+    subtitle: 'Vice Chairman'
+  },
+]
+
 export default class App extends Component {
   constructor(props) {
     super(props);
     this.props = props;
     this.state = {
-      modalVisible: null
+      modalVisible: this.props.visible,
+      updateMode: true,
+      eventId: this.props.eventSelected,
+      userId: this.props.userId,
+      part: this.props.eventParticipation,
+      participation: null
     };
   }
+
+  componentDidMount() {}
+
+  _handleIconState(state) {
+    apiBack
+      .AddParticipationMeetup(
+        this.props.eventSelected,
+        this.props.userId,
+        state
+      )
+      .then(() => {
+        this.setState({ ...this.state, participation: state });
+      });
+  }
+
   render() {
+
+    console.log(this.props.trueParticipants)
 
     return (
       <Modal
@@ -67,6 +103,7 @@ export default class App extends Component {
             <TouchableHighlight
               onPress={() => {
                 this.props.closeModal(false);
+                this.setState({ ...this.state, participation: null });
               }}
             >
               <View style={styles.arrow}>
@@ -95,7 +132,7 @@ export default class App extends Component {
                 </Text>
               </View>
             ) : (
-              <View style={{marginBottom: 100}} />
+              <View style={{ marginBottom: 100 }} />
             )}
 
             <View style={styles.boxOption2}>
@@ -112,11 +149,66 @@ export default class App extends Component {
                 {this.props.eventSelected.local_time}
               </Text>
             </View>
+
             <View style={styles.boxOption1}>
               <Text style={styles.text}>
                 {strip_html_tags(this.props.eventSelected.description)}
               </Text>
             </View>
+
+            <View style={styles.boxOption3}>
+              <TouchableHighlight onPress={() => this._handleIconState(true)}>
+                <Icon
+                  name={
+                    this.state.participation !== null
+                      ? this.state.participation
+                        ? "ios-checkmark-circle"
+                        : "ios-checkmark-circle-outline"
+                      : this.props.eventParticipation
+                      ? "ios-checkmark-circle"
+                      : "ios-checkmark-circle-outline"
+                  }
+                  color="white"
+                  size={60}
+                  style={{ padding: 10 }}
+                />
+              </TouchableHighlight>
+              <TouchableHighlight onPress={() => this._handleIconState(false)}>
+                <Icon
+                  name={
+                    this.state.participation !== null
+                      ? this.state.participation
+                        ? "ios-close-circle-outline"
+                        : "ios-close-circle"
+                      : this.props.eventParticipation
+                      ? "ios-close-circle-outline"
+                      : "ios-close-circle"
+                  }
+                  color="white"
+                  size={60}
+                  style={{ padding: 10 }}
+                />
+              </TouchableHighlight>
+            </View>
+            {this.props.trueParticipants["true"] !== undefined && (
+              <View style={styles.listParticipants}>
+                {this.props.trueParticipants["true"].map((participant, i) => (
+                  
+                  <View style={styles.partBox}>
+                    <View style={styles.partImage}>
+                      <Avatar
+                      size="large"
+                      source={{ uri: participant.contact.pictureUrls.values[0] }}
+                      ></Avatar>
+                    </View>
+                    <View style={styles.partInfo}>
+                      <Text style={styles.partName}>{participant.contact.firstName + " " + participant.contact.lastName}</Text>
+                      <Text style={styles.partHeadline}>{participant.contact.headline}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </ScrollView>
         )}
       </Modal>
@@ -129,6 +221,9 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "black",
     color: "white"
+  },
+  icon: {
+    fontSize: 30
   },
   imagePerfil: {
     marginLeft: "43%"
@@ -154,6 +249,17 @@ const styles = StyleSheet.create({
     marginTop: 30,
     marginLeft: "6%",
     marginRight: "6%"
+  },
+  boxOption3: {
+    marginTop: 10,
+    marginBottom: 20,
+    flexDirection: "row",
+    justifyContent: "center",
+    marginLeft: "6%",
+    marginRight: "6%"
+  },
+  listParticipants: {
+    marginBottom: 50
   },
   title: {
     fontFamily: "Helvetica",
@@ -187,5 +293,29 @@ const styles = StyleSheet.create({
   },
   slide: {
     height: 500
+  },
+  partBox: {
+   flex:1,
+   flexDirection: 'row',
+   padding: 10,
+   borderWidth: 1,
+   borderBottomColor: "white"
+  },
+  partImage: {
+    marginRight: 10,
+  },
+  partName: {
+    color:"white",
+    fontSize: 18,
+    fontFamily: "Helvetica",
+    fontWeight: "bold",
+    letterSpacing: 1.2,
+  },
+  partHeadline: {
+    color:"grey",
+    fontFamily: "Helvetica",
+    fontWeight: "normal",
+    letterSpacing: 1.2,
+    width: 350
   }
 });

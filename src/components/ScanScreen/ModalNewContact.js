@@ -9,7 +9,7 @@ import {
   View,
   Image,
   Dimensions,
-  onPress,
+  Alert,
   shadowColor
 } from "react-native";
 
@@ -38,16 +38,30 @@ export default class ModalNewContact extends Component {
     })
   }
 
+
   _saveContact = () => {
 
-    objContact = {
-      userId: this.props.userId,
-      contactUserId: this.props.contactUserId,
-      meetups: this.props.meetups[this.state.valueSmall0].label
-    }
+    apiBack.CheckIfContactSaved(this.props.userId, this.props.contactUserId)
+    .then(response => {
+      if (response !== null) {
+        Alert.alert(
+          response.message,
+        );
+      } else {
+        
+        objContact = {
 
-    this.socket.emit("updateContact", objContact);
-    this.props.closeModal();
+          userId: this.props.userId,
+          contactUserId: this.props.contactUserId,
+          meetups: this.props.meetups[this.state.valueSmall0].label
+        }
+    
+        this.socket.emit("updateContact", objContact);
+        this.props.closeModal();
+      }
+    })
+
+
 
   }
 

@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import io from "socket.io-client";
 import { URL } from "../../utils/utils";
-import { SearchBar } from "react-native-elements";
+import { SearchBar, ButtonGroup } from "react-native-elements";
 
 import {
   StyleSheet,
@@ -26,25 +26,6 @@ export default class Contacts extends Component {
     header: null // !!! Hide Header
   };
 
-  componentDidMount() {
-    this._updateList();
-  }
-
-  _updateList = () => {
-    AsyncStorage.getItem("userToken")
-      .then(token => apiBack.GetContactOfUsers(token))
-      .then(user => {
-        var meetups = _.uniq(_.map(user.contacts, "meetup"));
-        console.log(meetups);
-        this.setState({
-          ...this.state,
-          user: user,
-          contacts: _.groupBy(user.contacts, "meetup"),
-          headerMeetups: meetups
-        });
-      });
-  };
-
   constructor() {
     super();
     this.state = {
@@ -52,11 +33,12 @@ export default class Contacts extends Component {
       activeSections: [],
       user: null,
       contacts: [],
-      headerMeetups: []
+      filteredContacts: [],
+      index: 0
     };
 
     this.contacts = [];
-
+    this.handleChange = this.handleChange.bind(this);
     this.socket = io(URL);
 
     this.socket.on("updateContactList", newContactData => {
@@ -68,7 +50,7 @@ export default class Contacts extends Component {
             apiBack
               .GetContactOfUsers(user.access_token)
               .then(userUpdated =>
-                this.setState({ ...this.state, contacts: userUpdated.contacts })
+                this.setState({ ...this.state, contacts: _.groupBy(userUpdated.contacts, "meetup") })
               );
           });
         });
@@ -76,9 +58,35 @@ export default class Contacts extends Component {
     });
   }
 
+  componentDidMount() {
+    this._updateList();
+  }
+
+  _updateIndex = index => {
+    this.setState({ index });
+  };
+
+  _updateList = () => {
+    AsyncStorage.getItem("userToken")
+      .then(token => apiBack.GetContactOfUsers(token))
+      .then(user => {
+        console.log(_.groupBy(user.contacts, "meetup"));
+        this.setState({
+          ...this.state,
+          user: user,
+          contacts: _.groupBy(user.contacts, "meetup"),
+          filteredContacts: _.groupBy(user.contacts, "meetup")
+        });
+      });
+  };
+
+  _list = () => {
+    this._updateList()
+  }
+
   _renderHeader = item => {
     return (
-      <View>
+      <View key={item}>
         <View style={styles.event}>
           <View style={styles.header}>
             <Text style={styles.headerEvent}>{item}</Text>
@@ -102,12 +110,15 @@ export default class Contacts extends Component {
       </View>
     );
   };
+
   _renderContent = item => {
     return (
       <TouchableHighlight
+        key={item.contact.id}
         onPress={() =>
           this.props.navigation.navigate("ContactSelected", {
-            idContact: item.contact.id
+            idContact: item.contact.id,
+            list: this._list
           })
         }
       >
@@ -121,79 +132,147 @@ export default class Contacts extends Component {
               {item.contact.firstName} {item.contact.lastName}
             </Text>
             <Text style={styles.text}>{item.contact.headline}</Text>
-            <View style={{ flexDirection: "row", marginLeft:"6%", marginTop:"5%" }}>
-              <View style={{ marginRight: 10 }}>
-                <Text style={styles.tag}>Auditoría</Text>
-              </View>
-              <View style={{ marginRight: 10 }}>
-                <Text style={styles.tag}>Finanzas</Text>
-              </View>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                marginLeft: "6%",
+                marginTop: "5%",
+                width: 300
+              }}
+            >
+              {item.tags.map(tag => (
+                <View style={{ marginRight: 10, marginBottom: 10 }}>
+                  <Text style={styles.tag}>{tag}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
       </TouchableHighlight>
     );
   };
+
   _updateSections = activeSections => {
     this.setState({ activeSections });
   };
 
+  handleChange(e) {
+    // Variable to hold the original version of the list
+    let currentContacts = [];
+    // Variable to hold the filtered list before putting into state
+    let newList = [];
+    let meetups = [];
+    let filteredMeetups = [];
+    let updatedList;
+
+    // If the search bar isn't empty
+    if (e !== "") {
+      // Assign the original list to currentContacts
+      currentContacts = this.state.contacts;
+
+      meetups = Object.keys(currentContacts);
+
+      meetups.forEach(meetup => {
+        currentContacts[meetup].forEach(meet => {
+          let filter = meet.tags.filter(tag => {
+            const lc = tag.toLowerCase();
+            const filter = e.toLowerCase();
+            if (lc.includes(filter)) {
+              filteredMeetups.push(meet);
+            }
+          });
+        });
+      });
+
+      updatedList = _.groupBy(
+        _.uniqBy(filteredMeetups, "contact.id"),
+        "meetup"
+      );
+      this.setState({ contacts: updatedList });
+    } else {
+      this.setState({ contacts: this.state.filteredContacts });
+    }
+  }
+
   render() {
     return (
-      <ScrollView>
-        <View style={styles.container}>
-          {/* <SearchBar
-          onChangeText={() => {}}
+      <React.Fragment>
+        <ButtonGroup
+          selectedBackgroundColor="pink"
+          onPress={this._updateIndex}
+          selectedIndex={this.state.index}
+          buttons={["Contacts", "Data Analysis"]}
+          buttonStyle={{backgroundColor: "white"}}
+          containerStyle={{ height: 30 }}
+        />
+        <SearchBar
+          onChangeText={this.handleChange}
           onClearText={() => {}}
-          containerStyle={{marginTop:40}}
-          placeholder="Type Here..."
-        /> */}
-          <TouchableHighlight
-            onPress={() => this.props.navigation.navigate("Home")}
-          >
-            <View style={styles.arrow}>
-              <SvgUri
-                width="20"
-                height="20"
-                source={require("../../resources/svg/arrow.svg")}
-              />
-            </View>
-          </TouchableHighlight>
-          {this.state.contacts !== null && (
-            <View>
-              {Object.keys(this.state.contacts).map(meetup =>
-                this._renderHeader(meetup)
-              )}
-            </View>
-            // <Accordion
-            //   sections={this.state.contacts}
-            //   activeSections={this.state.activeSections}
-            //   renderSectionTitle={this._renderSectionTitle}
-            //   renderHeader={this._renderHeader}
-            //   renderContent={this._renderContent}
-            //   onChange={this._updateSections}
-            // />
-          )}
-          {this.state.contacts.length === 0 && (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center"
-              }}
+          containerStyle={{ marginTop: 0 }}
+          placeholder="Busca un contacto..."
+          lightTheme
+        />
+
+        <ScrollView>
+          <View style={styles.container}>
+            <TouchableHighlight
+              onPress={() => this.props.navigation.navigate("Home")}
             >
-              <SvgUri
-                width="150"
-                height="150"
-                source={require("../../resources/svg/qr.svg")}
-              />
-              <Text style={{ color: "white", marginTop: 20 }}>
-                Escane a tu primer contacto!
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+              <View style={styles.arrow}>
+                <SvgUri
+                  width="20"
+                  height="20"
+                  source={require("../../resources/svg/arrow.svg")}
+                />
+              </View>
+            </TouchableHighlight>
+            {this.state.contacts !== null && (
+              <View>
+                {Object.keys(this.state.contacts).map(meetup =>
+                  this._renderHeader(meetup)
+                )}
+              </View>
+            )}
+            {this.state.contacts.length === 0 && (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center"
+                }}
+              >
+                <SvgUri
+                  width="150"
+                  height="150"
+                  source={require("../../resources/svg/qr.svg")}
+                />
+                <Text style={{ color: "white", marginTop: 20 }}>
+                  Escane a tu primer contacto!
+                </Text>
+              </View>
+            )}
+            {Object.keys(this.state.contacts).length === 0 && (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center"
+                }}
+              >
+                <SvgUri
+                  width="150"
+                  height="150"
+                  source={require("../../resources/svg/qr.svg")}
+                />
+                <Text style={{ color: "white", marginTop: 20 }}>
+                  No se han encontrado coincidencias..
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </React.Fragment>
     );
   }
 }
@@ -219,7 +298,7 @@ const styles = StyleSheet.create({
     width: "100%",
     borderBottomColor: "white",
     borderBottomWidth: 2,
-    marginLeft: "5%",
+    marginLeft: "5%"
   },
   avatar: {
     marginTop: "0%",
