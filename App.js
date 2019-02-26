@@ -59,15 +59,16 @@ const AppStack = createBottomTabNavigator({
   tabBarOptions: {
       showLabel: false,
       labelStyle: {
-        color: "white",
         margin: 0,
         paddingBottom: 20,
     },
    
     style: {
-          color: "white",
           alignItems: "center",
-          backgroundColor: 'black', // TabBar background
+          backgroundColor: 'black',
+          borderTopWidth: 1,
+          borderTopColor: "white"
+          // TabBar background
       }
   }
 });

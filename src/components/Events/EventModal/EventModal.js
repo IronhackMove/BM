@@ -8,10 +8,13 @@ import {
   View,
   Image,
   ScrollView,
+  Alert,
   TouchableHighlight
 } from "react-native";
 
 import { ListItem, Avatar } from "react-native-elements";
+
+import { Calendar, Permissions } from "expo";
 
 import Icon from "react-native-vector-icons/Ionicons";
 import SvgUri from "react-native-svg-uri";
@@ -36,20 +39,24 @@ const { width: viewportWidth, height: viewportHeight } = Dimensions.get(
   "window"
 );
 
+const _ = require("lodash");
+
 const sliderWidth = wp(100);
 
 const list = [
   {
-    name: 'Amy Farha',
-    avatar_url: 'https://s3.amazonaws.com/uifaces/faces/twitter/ladylexy/128.jpg',
-    subtitle: 'Vice President'
+    name: "Amy Farha",
+    avatar_url:
+      "https://s3.amazonaws.com/uifaces/faces/twitter/ladylexy/128.jpg",
+    subtitle: "Vice President"
   },
   {
-    name: 'Chris Jackson',
-    avatar_url: 'https://s3.amazonaws.com/uifaces/faces/twitter/adhamdannaway/128.jpg',
-    subtitle: 'Vice Chairman'
-  },
-]
+    name: "Chris Jackson",
+    avatar_url:
+      "https://s3.amazonaws.com/uifaces/faces/twitter/adhamdannaway/128.jpg",
+    subtitle: "Vice Chairman"
+  }
+];
 
 export default class App extends Component {
   constructor(props) {
@@ -60,29 +67,42 @@ export default class App extends Component {
       updateMode: true,
       eventId: this.props.eventSelected,
       userId: this.props.userId,
-      part: this.props.eventParticipation,
-      participation: null
+      part: [],
+      participation: null,
+      updatedParticipation: false
     };
   }
 
-  componentDidMount() {}
+  componentDidMount() {
 
-  _handleIconState(state) {
-    apiBack
-      .AddParticipationMeetup(
-        this.props.eventSelected,
-        this.props.userId,
-        state
-      )
-      .then(() => {
-        this.setState({ ...this.state, participation: state });
-      });
   }
 
+
+  _handleIconState = async state => {
+    console.log(this.props.eventSelected.id);
+
+    const updatePart = await apiBack.AddParticipationMeetup(
+      this.props.eventSelected.id,
+      this.props.userId,
+      state
+    );
+    console.log(updatePart);
+
+    const participantsMeetup = await apiBack.GetParticipantsMeetup(
+      this.props.eventSelected
+    );
+    console.log(_.groupBy(participantsMeetup.participants, "participation"));
+
+    Alert.alert("Participación actualizada");
+    this.setState({
+      ...this.state,
+      participation: state,
+      part: _.groupBy(participantsMeetup.participants, "participation"),
+      updatedParticipation: true
+    });
+  };
+
   render() {
-
-    console.log(this.props.trueParticipants)
-
     return (
       <Modal
         animationType="fade"
@@ -103,7 +123,11 @@ export default class App extends Component {
             <TouchableHighlight
               onPress={() => {
                 this.props.closeModal(false);
-                this.setState({ ...this.state, participation: null });
+                this.setState({
+                  ...this.state,
+                  participation: null,
+                  updatedParticipation: false
+                });
               }}
             >
               <View style={styles.arrow}>
@@ -190,25 +214,75 @@ export default class App extends Component {
                 />
               </TouchableHighlight>
             </View>
-            {this.props.trueParticipants["true"] !== undefined && (
-              <View style={styles.listParticipants}>
-                {this.props.trueParticipants["true"].map((participant, i) => (
-                  
-                  <View style={styles.partBox}>
-                    <View style={styles.partImage}>
-                      <Avatar
-                      size="large"
-                      source={{ uri: participant.contact.pictureUrls.values[0] }}
-                      ></Avatar>
+            {this.props.trueParticipants["true"] !== undefined &&
+              this.state.updatedParticipation === false && (
+                <View style={styles.listParticipants}>
+                  {this.props.trueParticipants["true"].map((participant, i) => (
+                    <View style={styles.partBox}>
+                      <View style={styles.partImage}>
+                        <Avatar
+                          size="large"
+                          source={{
+                            uri: participant.contact.pictureUrls.values[0]
+                          }}
+                        />
+                      </View>
+                      <View style={styles.partInfo}>
+                        <Text style={styles.partName}>
+                          {participant.contact.firstName +
+                            " " +
+                            participant.contact.lastName}
+                        </Text>
+                        <Text style={styles.partHeadline}>
+                          {participant.contact.headline}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.partInfo}>
-                      <Text style={styles.partName}>{participant.contact.firstName + " " + participant.contact.lastName}</Text>
-                      <Text style={styles.partHeadline}>{participant.contact.headline}</Text>
+                  ))}
+                </View>
+              )}
+            {this.props.trueParticipants["true"] !== undefined &&
+              this.state.updatedParticipation === true && (
+                <View style={styles.listParticipants}>
+                  {this.state.part["true"].map((participant, i) => (
+                    <View style={styles.partBox}>
+                      <View style={styles.partImage}>
+                        <Avatar
+                          size="large"
+                          source={{
+                            uri: participant.contact.pictureUrls.values[0]
+                          }}
+                        />
+                      </View>
+                      <View style={styles.partInfo}>
+                        <Text style={styles.partName}>
+                          {participant.contact.firstName +
+                            " " +
+                            participant.contact.lastName}
+                        </Text>
+                        <Text style={styles.partHeadline}>
+                          {participant.contact.headline}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
-              </View>
-            )}
+                  ))}
+                </View>
+              )}
+            {this.props.trueParticipants["true"] === undefined &&
+              this.state.updatedParticipation === true && (
+                <View
+                  style={{
+                    padding: 10,
+                    marginBottom: 30,
+                    flex: 1,
+                    justifyContent: "center"
+                  }}
+                >
+                  <Text style={[styles.text, { textAlign: "center" }]}>
+                    Nadie ha confirmado su participación por ahora..
+                  </Text>
+                </View>
+              )}
           </ScrollView>
         )}
       </Modal>
@@ -295,24 +369,24 @@ const styles = StyleSheet.create({
     height: 500
   },
   partBox: {
-   flex:1,
-   flexDirection: 'row',
-   padding: 10,
-   borderWidth: 1,
-   borderBottomColor: "white"
+    flex: 1,
+    flexDirection: "row",
+    padding: 10,
+    borderWidth: 1,
+    borderBottomColor: "white"
   },
   partImage: {
-    marginRight: 10,
+    marginRight: 10
   },
   partName: {
-    color:"white",
+    color: "white",
     fontSize: 18,
     fontFamily: "Helvetica",
     fontWeight: "bold",
-    letterSpacing: 1.2,
+    letterSpacing: 1.2
   },
   partHeadline: {
-    color:"grey",
+    color: "grey",
     fontFamily: "Helvetica",
     fontWeight: "normal",
     letterSpacing: 1.2,

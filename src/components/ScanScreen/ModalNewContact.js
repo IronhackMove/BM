@@ -97,8 +97,10 @@ export default class ModalNewContact extends Component {
               <SelectInput
                 value={this.state.valueSmall0}
                 options={this.props.meetups}
+                pickerItemsStyle={{color:"white"}}
+                labelStyle={{color:"white"}}
                 onSubmitEditing={this.onSubmitEditingSmall0.bind(this)}
-                style={[styles.selectInput, styles.selectInputSmall]}
+                style={[styles.selectInput, styles.selectInputSmall, {color:"white"}]}
               />
               <View style={styles.down}>
                 <SvgUri

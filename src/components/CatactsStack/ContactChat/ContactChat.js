@@ -1,16 +1,7 @@
 import React, { Component } from "react";
 import { URL } from "../../utils/utils";
-import {
-  AppRegistry,
-  StyleSheet,
-  Text,
-  View,
-  Image,
-  TextInput,
-  TouchableHighlight,
-  Dimensions,
-  KeyboardAvoidingView
-} from "react-native";
+import { StyleSheet, Dimensions, TouchableHighlight, View } from "react-native";
+import SvgUri from "react-native-svg-uri";
 
 import io from "socket.io-client";
 
@@ -26,12 +17,13 @@ import {
 import apiBack from "../../api/apiBack";
 
 export default class ContactChat extends Component {
-  
-
+  static navigationOptions = {
+    header: null // !!! Hide Header
+  };
 
   constructor(props) {
     super(props);
-    this.props=props
+    this.props = props;
     this.socket = io(URL);
 
     this.state = {
@@ -150,18 +142,28 @@ export default class ContactChat extends Component {
     console.log(this.state.contactSelected);
 
     return (
-
+      <React.Fragment>
+        <TouchableHighlight onPress={() => this.props.navigation.goBack()} style={{backgroundColor: "black"}}>
+          <View style={[styles.arrow, {backgroundColor:"black"}]}>
+            <SvgUri
+              width="20"
+              height="20"
+              source={require("../../resources/svg/arrow.svg")}
+            />
+          </View>
+        </TouchableHighlight>
         <GiftedChat
-          styles={{backgroundColor: "black"}}
+          styles={{ backgroundColor: "black" }}
           messages={this.state.messages}
           onSend={messages => this.onSend(messages)}
           renderSystemMessage={this.renderSystemMessage}
           renderBubble={this.renderBubble}
+          placeholder="Escribe tu mensage.."
           user={{
             _id: this.state.emitter
           }}
         />
-
+      </React.Fragment>
     );
   }
 
@@ -191,5 +193,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#FFF"
-  }
+  },
+  arrow: {
+    marginTop: "15%",
+    marginLeft: "6%"
+  },
 });

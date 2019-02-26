@@ -24,10 +24,6 @@ export default class App extends Component {
     }
   }
 
-_sayHello = async () => {
-    await axios.get(`${this.baseURL}/auth/sayHello/`)
-    .then((response) => console.log(response))
-}
 
 _sendDataToBack(data)  {
   axios

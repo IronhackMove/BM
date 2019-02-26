@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  Alert,
   View,
   Image,
   ScrollView,
@@ -15,6 +16,7 @@ import {
 
 import SvgUri from "react-native-svg-uri";
 import apiBack from "../api/apiBack";
+import Tags from "react-native-tags";
 
 function wp(percentage) {
   const value = (percentage * viewportWidth) / 100;
@@ -39,7 +41,8 @@ export default class App extends Component {
       token: null,
       userProfile: null,
       emailAddress: null,
-      phoneNumber: ""
+      phoneNumber: "",
+      tags: []
     };
   }
 
@@ -47,6 +50,18 @@ export default class App extends Component {
     await AsyncStorage.clear();
     this.props.navigation.navigate("Auth");
   };
+
+  AddTag() {
+   
+    apiBack.AddTag(
+      this.state.token,
+      this.state.tags
+    ).then(() => {
+      Alert.alert(
+        "Tags saved!",
+      );
+    })
+  }
 
   componentDidMount() {
     AsyncStorage.getItem("userToken").then(token => {
@@ -58,6 +73,7 @@ export default class App extends Component {
           userProfile: userProfile.data,
           emailAddress: userProfile.data.emailAddress,
           phoneNumber: userProfile.data.phoneNumber,
+          tags: userProfile.data.tags,
           token: token
         })
       );
@@ -80,7 +96,7 @@ export default class App extends Component {
         <ScrollView style={styles.container}>
           {this.state.userProfile !== null && (
             <React.Fragment>
-              <View style={styles.imagePerfil}>
+              <View style={[styles.imagePerfil]}>
                 <Image
                   style={{ width: 250, height: 250, position: "absolute" }}
                   source={{
@@ -196,8 +212,62 @@ export default class App extends Component {
                   marginTop: "3%"
                 }}
               />
+
               <View style={styles.add}>
-                <TouchableHighlight onPress={()=>this.props.navigation.navigate("Categories")}>
+                <TouchableHighlight onPress={() => this.AddTag()}>
+                  <View>
+                    <SvgUri
+                      width="30"
+                      height="30"
+                      source={require("../resources/svg/edit.svg")}
+                    />
+                  </View>
+                </TouchableHighlight>
+
+                <TouchableHighlight onPress={() => this.AddTag()}>
+                  <View style={{ marginLeft: "6%", marginTop: "-1%" }}>
+                    <Text style={styles.text}>TAGS</Text>
+                    <Tags
+                      textInputProps={{
+                        placeholder: "Any type of animal"
+                      }}
+                      initialTags={this.state.tags}
+                      onChangeTags={tags =>
+                        this.setState({ ...this.state, tags: tags })
+                      }
+                      tagContainerStyle={{
+                        backgroundColor: "white",
+                        borderRadius: 1
+                      }}
+                      onTagPress={(index, tagLabel, event, deleted) =>
+                        console.log(
+                          index,
+                          tagLabel,
+                          event,
+                          deleted ? "deleted" : "not deleted"
+                        )
+                      }
+                      containerStyle={{ justifyContent: "flex-start" }}
+                      inputStyle={{ color: "white", backgroundColor: "black" }}
+                    />
+                  </View>
+                </TouchableHighlight>
+              </View>
+
+              <View
+                style={{
+                  borderBottomColor: "white",
+                  borderBottomWidth: 2,
+                  width: "90%",
+                  marginLeft: "5%",
+                  marginTop: "3%"
+                }}
+              />
+
+              <View style={styles.add}>
+                <TouchableHighlight
+                  onPress={() => this.props.navigation.navigate("Categories")}
+                >
                   <View>
                     <SvgUri
                       width="30"
@@ -225,8 +295,8 @@ export default class App extends Component {
                   marginLeft: "19%"
                 }}
               >
-                {this.state.userProfile.selectedCategories.map(category => (
-                  <Text style={styles.category}>{category.shortname}</Text>
+                {this.state.userProfile.selectedCategories.map((category, i) => (
+                  <Text key={i} style={styles.category}>{category.shortname}</Text>
                 ))}
               </View>
               <View
@@ -239,17 +309,26 @@ export default class App extends Component {
                   marginBottom: 50
                 }}
               />
-              <TouchableHighlight onPress={this._signOutAsync}>
-                <Text
-                  style={{
-                    color: "white",
-                    textDecorationLine: "underline",
-                    marginBottom: 20
-                  }}
-                >
-                  Logout
-                </Text>
-              </TouchableHighlight>
+              <View
+                style={{
+                  height: 200,
+                  flex: 1,
+                  justifyContent: "center",
+                  flexDirection: "row"
+                }}
+              >
+                <TouchableHighlight onPress={this._signOutAsync}>
+                  <Text
+                    style={{
+                      color: "white",
+                      textDecorationLine: "underline",
+                      marginBottom: 20
+                    }}
+                  >
+                    Logout
+                  </Text>
+                </TouchableHighlight>
+              </View>
             </React.Fragment>
           )}
         </ScrollView>

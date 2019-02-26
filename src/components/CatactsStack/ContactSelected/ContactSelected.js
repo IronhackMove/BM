@@ -17,6 +17,9 @@ import SvgUri from "react-native-svg-uri";
 import ViewMoreText from "react-native-view-more-text";
 import Tags from "react-native-tags";
 import apiBack from "../../api/apiBack";
+import call from "react-native-phone-call";
+
+import email from "react-native-email";
 
 function wp(percentage) {
   const value = (percentage * viewportWidth) / 100;
@@ -51,34 +54,48 @@ export default class ContactSelected extends Component {
     this.loadAppInformation();
   }
 
-  AddContact() {
+  handleEmail = () => {
+    const to = [this.state.contactSelected.emailAddress]; // string or array of email addresses
+    email(to, {
+      // Optional additional arguments
+      cc: [], // string or array of email addresses
+      bcc: [], // string or array of email addresses
+      subject: `Nos conocimos en el evento ${
+        this.props.navigation.state.params.meetup
+      }`,
+      body: `Hola ${this.state.contactSelected.firstName}`
+    }).catch(console.error);
+  };
 
-    apiBack.AddContactNote(
-      this.state.userToken,
-      this.state.contactId,
-      this.state.note
-    ).then(() => {
-      Alert.alert(
-        "Note saved!",
-      );
-    })
+  handlePhoneCall = () => {
+    const args = {
+      number: this.state.contactSelected.phoneNumber, // String value with the number to call
+      prompt: false // Optional boolean property. Determines if the user should be prompt prior to the call
+    };
+
+    call(args).catch(console.error);
+  };
+
+  AddContact() {
+    apiBack
+      .AddContactNote(
+        this.state.userToken,
+        this.state.contactId,
+        this.state.note
+      )
+      .then(() => {
+        Alert.alert("Note saved!");
+      });
   }
 
   AddTag() {
-   
-    apiBack.AddTag(
-      this.state.userToken,
-      this.state.contactId,
-      this.state.tags
-    ).then(() => {
-      this.props.navigation.state.params.list
-      Alert.alert(
-        "Tags saved!",
-      );
-    })
+    apiBack
+      .AddTag(this.state.userToken, this.state.contactId, this.state.tags)
+      .then(() => {
+        this.props.navigation.state.params.list;
+        Alert.alert("Tags saved!");
+      });
   }
-
-  
 
   loadAppInformation = async () => {
     try {
@@ -102,12 +119,11 @@ export default class ContactSelected extends Component {
         note: "";
       }
 
-      
       tagsFound = userProfile.data.contacts.filter(
         contact => contact.contact === contactInfo.data._id
-      )
+      );
 
-      console.log("tags",tagsFound[0].tags);
+      console.log("tags", tagsFound[0].tags);
 
       this.setState({
         ...this.state,
@@ -131,15 +147,15 @@ export default class ContactSelected extends Component {
   };
 
   _goBack = () => {
-    this.props.navigation.state.params.list()
-    this.props.navigation.navigate("Contacts")
-  }
+    this.props.navigation.state.params.list();
+    this.props.navigation.navigate("Contacts");
+  };
 
   render() {
     console.log(this.state.contactId);
 
     return (
-      <ScrollView>
+      <ScrollView style={{ backgroundColor: "black" }}>
         {this.state.contactSelected !== null && (
           <View style={styles.container}>
             <View style={styles.imagePerfil}>
@@ -188,7 +204,7 @@ export default class ContactSelected extends Component {
                 numberOfLines={2}
                 renderViewMore={this.renderViewMore}
                 renderViewLess={this.renderViewLess}
-                textStyle={{ textAlign: "left", color: "white" }}
+                textStyle={{ textAlign: "left" }}
               >
                 <Text style={styles.acordeon}>
                   {this.state.contactSelected.summary}
@@ -196,7 +212,16 @@ export default class ContactSelected extends Component {
               </ViewMoreText>
             </View>
 
-            <View style={styles.add}>
+            <View
+              style={[
+                styles.add,
+                {
+                  marginTop: 20,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "white"
+                }
+              ]}
+            >
               <View>
                 <TouchableHighlight onPress={() => this.AddContact()}>
                   <SvgUri
@@ -212,10 +237,12 @@ export default class ContactSelected extends Component {
               >
                 <Text style={styles.text}>Add your notes</Text>
                 <TextInput
+                  placeholder="Add a note.."
+                  placeholderTextColor="white"
                   multiline={true}
                   numberOfLines={4}
                   style={{
-                    height: 40,
+                    height: 100,
                     borderWidth: 1,
                     color: "white",
                     width: "100%"
@@ -227,85 +254,30 @@ export default class ContactSelected extends Component {
                 />
               </View>
             </View>
+
             <View
-              style={{
-                borderBottomColor: "white",
-                borderBottomWidth: 2,
-                width: "90%",
-                marginLeft: "5%",
-                marginTop: "3%"
-              }}
-            />
-            <View style={styles.add}>
-              <View>
-                <TouchableHighlight onPress={() => this.AddTag()}>
-                  <SvgUri
-                    width="30"
-                    height="30"
-                    source={require("../../resources/svg//iconAdd.svg")}
-                  />
-                </TouchableHighlight>
-              </View>
-
-              <View
-                style={{ marginLeft: "5%", marginTop: "-1%", width: "100%", height:"100%" }}
-              >
-                <Text style={[styles.text]}>Add tags</Text>
-                <View style={{ width: "80%", height:"100%"}}>
-                  <Tags
-    
-                    textInputProps={{
-                      placeholder: "Any type of animal"
-                    }}
-                    initialTags={this.state.tags}
-                    onChangeTags={tags => this.setState({...this.state, tags: tags})}
-                    tagContainerStyle={{backgroundColor: "white", borderRadius: 1}}
-                    onTagPress={(index, tagLabel, event, deleted) =>
-                      console.log(
-                        index,
-                        tagLabel,
-                        event,
-                        deleted ? "deleted" : "not deleted"
-                      )
-                    }
-                    containerStyle={{ justifyContent: "center" }}
-                    inputStyle={{ color: "white", backgroundColor: "black" }}
-         
-                  />
+              style={[,
+                { borderBottomWidth: 1, borderBottomColor: "white", marginLeft: "6%", marginRight: "5%", height: 150, paddingTop: "3%"}
+              ]}
+            >
+              <View style={{}}>
+                <Text style={[styles.text]}>Tags</Text>
+                <View
+                  style={{
+                    width: "80%",
+                    flexDirection: "row",
+                    justifyContent: "flex-start",
+                    flexWrap: "wrap",
+                    marginLeft: "0%",
+                    marginTop: "5%"
+                  }}
+                >
+                  {this.state.contactSelected.tags.map(tag => (
+                    <Text style={styles.tag}>{tag}</Text>
+                  ))}
                 </View>
-
-                {/* <View style={{flex: 1, flexDirection:"column", height: 200}}>
-                  <View>
-                    <TextInput
-                      style={{
-                        height: 40,
-                        width: 200,
-                        color: "white"
-                      }}
-                      onChangeText={text => this.setState({ text })}
-                      value={this.state.text}
-                    />
-                  </View>
-                  <View style={{flexDirection:"row"}}>
-                    <View style={{marginRight:10}}>
-                      <Text style={styles.tag}>Auditoría</Text>
-                    </View>
-                    <View style={{marginRight:10}}>
-                      <Text style={styles.tag}>Finanzas</Text>
-                    </View>
-                  </View>
-                </View> */}
               </View>
             </View>
-            <View
-              style={{
-                borderBottomColor: "white",
-                borderBottomWidth: 2,
-                width: "90%",
-                marginLeft: "5%",
-                marginTop: "10%"
-              }}
-            />
             <View
               style={{
                 flexDirection: "row",
@@ -324,6 +296,7 @@ export default class ContactSelected extends Component {
                   justifyContent: "center",
                   alignItems: "center"
                 }}
+                onPress={this.handleEmail}
               >
                 <View>
                   <SvgUri
@@ -343,6 +316,7 @@ export default class ContactSelected extends Component {
                   justifyContent: "center",
                   alignItems: "center"
                 }}
+                onPress={this.handlePhoneCall}
               >
                 <View>
                   <SvgUri
@@ -420,6 +394,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     color: "white",
     marginTop: 20,
+    marginBottom: 20,
     marginLeft: "6%",
     marginRight: "6%"
   },
@@ -442,10 +417,10 @@ const styles = StyleSheet.create({
     flex: 0,
     flexDirection: "row",
     justifyContent: "flex-start",
-    marginTop: 40,
+    marginTop: 20,
     marginLeft: "6%",
     marginRight: "6%",
-    height: 60
+    height: 100
   },
   title: {
     fontFamily: "Helvetica",
@@ -498,6 +473,8 @@ const styles = StyleSheet.create({
     fontWeight: "normal",
     color: "black",
     backgroundColor: "white",
-    padding: 5
+    padding: 5,
+    height: 28,
+    margin: 4
   }
 });

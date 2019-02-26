@@ -133,13 +133,14 @@ export default class ScanScreen extends Component {
       <React.Fragment>
         {this.state.contactUser !== null && (
           <View style={styles.modal}>
-            <Modal isVisible={this.state.isModalVisible}>
+            <Modal animationIn="fadeIn" animationOut="fadeOut" isVisible={this.state.isModalVisible}>
               <ModalNewContact
                 userId={this.state.idUser}
                 contactUserId={this.state.contactUser.id}
                 meetups={this.state.meetups}
                 closeModal={this._closeModal}
                 contact={this.state.contactUser}
+              
               />
             </Modal>
           </View>

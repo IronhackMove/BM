@@ -2,8 +2,10 @@
 
 import React, { Component } from "react";
 import io from "socket.io-client";
-import { URL } from "../../utils/utils";
+import { URL, appColors } from "../../utils/utils";
 import { SearchBar, ButtonGroup } from "react-native-elements";
+import Collapsible from "react-native-collapsible";
+import { Badge } from "react-native-elements";
 
 import {
   StyleSheet,
@@ -12,7 +14,8 @@ import {
   Image,
   ScrollView,
   AsyncStorage,
-  TouchableHighlight
+  TouchableHighlight,
+  Dimensions
 } from "react-native";
 
 import apiBack from "../../api/apiBack";
@@ -34,7 +37,10 @@ export default class Contacts extends Component {
       user: null,
       contacts: [],
       filteredContacts: [],
-      index: 0
+      index: 0,
+      dataInfo: false,
+      dataChart: [],
+      allTags: []
     };
 
     this.contacts = [];
@@ -42,16 +48,15 @@ export default class Contacts extends Component {
     this.socket = io(URL);
 
     this.socket.on("updateContactList", newContactData => {
-      console.log(newContactData);
       if (_.includes(newContactData, this.state.user.id)) {
         AsyncStorage.getItem("userToken").then(token => {
-          console.log(token);
           apiBack.GetContactOfUsers(token).then(user => {
-            apiBack
-              .GetContactOfUsers(user.access_token)
-              .then(userUpdated =>
-                this.setState({ ...this.state, contacts: _.groupBy(userUpdated.contacts, "meetup") })
-              );
+            apiBack.GetContactOfUsers(user.access_token).then(userUpdated =>
+              this.setState({
+                ...this.state,
+                contacts: _.groupBy(userUpdated.contacts, "meetup")
+              })
+            );
           });
         });
       }
@@ -63,26 +68,77 @@ export default class Contacts extends Component {
   }
 
   _updateIndex = index => {
-    this.setState({ index });
+    this.setState({ index, contacts: this.state.filteredContacts });
   };
 
   _updateList = () => {
     AsyncStorage.getItem("userToken")
       .then(token => apiBack.GetContactOfUsers(token))
       .then(user => {
-        console.log(_.groupBy(user.contacts, "meetup"));
+        var result = _(user.contacts)
+          .groupBy("meetup")
+          .map((items, name) => {
+            var randomNumber = this.getRandomArbitrary(89, 255);
+
+            return {
+              label: name,
+              value: items.length,
+              color: `rgba(${randomNumber}, ${randomNumber},${randomNumber} , 1)`
+            };
+          })
+          .value();
+        const allTags = [];
+        _(user.contacts).forEach(contact => {
+          allTags.push(...contact.contact.tags);
+        });
+
+        const resultTags = _.values(_.groupBy(allTags)).map(d => {
+          let color;
+
+          switch (d.length) {
+            case 1:
+              color = "white";
+              break;
+            case 2:
+              color = appColors[1];
+              break;
+            case 3:
+              color = appColors[2];
+              break;
+            case 4:
+              color = appColors[3];
+              break;
+            default:
+              color = appColors[4];
+          }
+
+          return {
+            name: d[0],
+            count: d.length,
+            badgeColor: color,
+            textColor: d.length === 1 ? "black" : "white",
+            fontSize: d.length === 1 ? 13 : 13 * (d.length / 1.5)
+          };
+        });
+
         this.setState({
           ...this.state,
           user: user,
           contacts: _.groupBy(user.contacts, "meetup"),
-          filteredContacts: _.groupBy(user.contacts, "meetup")
+          filteredContacts: _.groupBy(user.contacts, "meetup"),
+          dataChart: result,
+          allTags: resultTags
         });
       });
   };
 
   _list = () => {
-    this._updateList()
-  }
+    this._updateList();
+  };
+
+  getRandomArbitrary = (min, max) => {
+    return Math.floor(Math.random() * (max - min) + min);
+  };
 
   _renderHeader = item => {
     return (
@@ -102,9 +158,10 @@ export default class Contacts extends Component {
             </View>
           </View>
         </View>
+
         <View style={{ marginTop: 10 }}>
           {this.state.contacts[item].map(contact =>
-            this._renderContent(contact)
+            this._renderContent(contact, item)
           )}
         </View>
       </View>
@@ -118,7 +175,8 @@ export default class Contacts extends Component {
         onPress={() =>
           this.props.navigation.navigate("ContactSelected", {
             idContact: item.contact.id,
-            list: this._list
+            list: this._list,
+            meetup: item.meetup
           })
         }
       >
@@ -134,15 +192,15 @@ export default class Contacts extends Component {
             <Text style={styles.text}>{item.contact.headline}</Text>
             <View
               style={{
+                width: "75%",
                 flexDirection: "row",
                 flexWrap: "wrap",
                 marginLeft: "6%",
-                marginTop: "5%",
-                width: 300
+                marginTop: "5%"
               }}
             >
-              {item.tags.map(tag => (
-                <View style={{ marginRight: 10, marginBottom: 10 }}>
+              {item.contact.tags.map((tag, i) => (
+                <View key={i} style={{ marginRight: 10, marginBottom: 10 }}>
                   <Text style={styles.tag}>{tag}</Text>
                 </View>
               ))}
@@ -156,6 +214,10 @@ export default class Contacts extends Component {
   _updateSections = activeSections => {
     this.setState({ activeSections });
   };
+
+  _searchTag(tag) {
+    this.handleChange(tag);
+  }
 
   handleChange(e) {
     // Variable to hold the original version of the list
@@ -175,7 +237,7 @@ export default class Contacts extends Component {
 
       meetups.forEach(meetup => {
         currentContacts[meetup].forEach(meet => {
-          let filter = meet.tags.filter(tag => {
+          let filter = meet.contact.tags.filter(tag => {
             const lc = tag.toLowerCase();
             const filter = e.toLowerCase();
             if (lc.includes(filter)) {
@@ -189,89 +251,187 @@ export default class Contacts extends Component {
         _.uniqBy(filteredMeetups, "contact.id"),
         "meetup"
       );
-      this.setState({ contacts: updatedList });
+      this.setState({ contacts: updatedList, index: 0 });
     } else {
-      this.setState({ contacts: this.state.filteredContacts });
+      this.setState({ contacts: this.state.filteredContacts, index: 0 });
     }
   }
 
   render() {
+    console.log("Contactos", Object.keys(this.state.contacts).length);
     return (
       <React.Fragment>
+        <View style={{ backgroundColor: "black", margin: 0 }}>
+          <TouchableHighlight
+            onPress={() => this.props.navigation.navigate("Home")}
+          >
+            <View style={styles.arrow}>
+              <SvgUri
+                width="20"
+                height="20"
+                source={require("../../resources/svg/arrow.svg")}
+              />
+            </View>
+          </TouchableHighlight>
+        </View>
         <ButtonGroup
+          containerStyle={{
+            height: 60,
+            marginBottom: 0,
+            marginTop: 0,
+            marginLeft: 0,
+            marginRight: 0
+          }}
           selectedBackgroundColor="pink"
           onPress={this._updateIndex}
           selectedIndex={this.state.index}
-          buttons={["Contacts", "Data Analysis"]}
-          buttonStyle={{backgroundColor: "white"}}
-          containerStyle={{ height: 30 }}
+          buttons={["Contacts", "Skills Map"]}
+          innerBorderStyle={{ borderColor: "black" }}
+          buttonStyle={{ backgroundColor: "black", margin: 0, padding: 0 }}
+          selectedButtonStyle={{
+            backgroundColor: "black"
+          }}
+          selectedTextStyle={[
+            {
+              color: "white",
+              textDecorationLine: "underline",
+              fontWeight: "bold",
+              paddingBottom: 3,
+              fontSize: 21,
+              letterSpacing: 1.2,
+              fontFamily: "Helvetica",
+              fontWeight: "normal"
+            }
+          ]}
+          textStyle={{
+            color: "white",
+            textDecorationLine: "none",
+            fontSize: 13,
+            letterSpacing: 1.2,
+            fontFamily: "Helvetica",
+            fontWeight: "normal"
+          }}
         />
-        <SearchBar
-          onChangeText={this.handleChange}
-          onClearText={() => {}}
-          containerStyle={{ marginTop: 0 }}
-          placeholder="Busca un contacto..."
-          lightTheme
-        />
+        {this.state.index === 0 && (
+          <SearchBar
+            onChangeText={this.handleChange}
+            onClearText={() => {}}
+            containerStyle={{
+              marginTop: 0,
+              backgroundColor: "black",
+              height: 60,
+              justifyContent: "center"
+            }}
+            leftIconContainerStyle={{
+              color: "white",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+            inputStyle={{
+              backgroundColor: "black",
+              color: "white",
+              marginLeft: 20
+            }}
+            placeholder="Busca un contacto..."
+            lightTheme
+          />
+        )}
 
-        <ScrollView>
-          <View style={styles.container}>
-            <TouchableHighlight
-              onPress={() => this.props.navigation.navigate("Home")}
+        {this.state.index === 0 && (
+          <ScrollView style={{ backgroundColor: "black" }}>
+            <View style={styles.container}>
+              {this.state.contacts !== null && (
+                <View>
+                  {Object.keys(this.state.contacts).map(meetup =>
+                    this._renderHeader(meetup)
+                  )}
+                </View>
+              )}
+              {(Object.keys(this.state.contacts).length === 0 ) && (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: "flex-start",
+                    marginTop: "35%",
+                    alignItems: "center"
+                  }}
+                >
+                  <SvgUri
+                    width="150"
+                    height="150"
+                    source={require("../../resources/svg/qr.svg")}
+                  />
+                  <Text style={{ color: "white", marginTop: "1%"}}>
+                    Escane a tu primer contacto!
+                  </Text>
+                </View>
+              )}
+              {Object.keys(this.state.contacts).length === 0 && (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginTop: 50
+                  }}
+                >
+                  <SvgUri
+                    width="150"
+                    height="150"
+                    source={require("../../resources/svg/qr.svg")}
+                  />
+                  <Text style={{ color: "white", marginTop: 20 }}>
+                    No se han encontrado coincidencias..
+                  </Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        )}
+        {this.state.index === 1 && (
+          <ScrollView style={{ backgroundColor: "black" }}>
+            <View
+              style={{
+                height: "100%",
+                width: "100%",
+                flex: 1,
+                justifyContent: "center"
+              }}
             >
-              <View style={styles.arrow}>
-                <SvgUri
-                  width="20"
-                  height="20"
-                  source={require("../../resources/svg/arrow.svg")}
-                />
-              </View>
-            </TouchableHighlight>
-            {this.state.contacts !== null && (
-              <View>
-                {Object.keys(this.state.contacts).map(meetup =>
-                  this._renderHeader(meetup)
-                )}
-              </View>
-            )}
-            {this.state.contacts.length === 0 && (
               <View
                 style={{
-                  flex: 1,
+                  flexDirection: "row",
                   justifyContent: "center",
-                  alignItems: "center"
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  padding: 10,
+                  marginTop: 100
                 }}
               >
-                <SvgUri
-                  width="150"
-                  height="150"
-                  source={require("../../resources/svg/qr.svg")}
-                />
-                <Text style={{ color: "white", marginTop: 20 }}>
-                  Escane a tu primer contacto!
-                </Text>
+                {this.state.allTags.map(tag => (
+                  <TouchableHighlight onPress={() => this._searchTag(tag.name)}>
+                    <Badge
+                      containerStyle={{
+                        backgroundColor: tag.badgeColor,
+                        margin: 5,
+                        borderRadius: 0
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.tags,
+                          { color: tag.textColor, fontSize: tag.fontSize }
+                        ]}
+                      >
+                        {tag.name}
+                      </Text>
+                    </Badge>
+                  </TouchableHighlight>
+                ))}
               </View>
-            )}
-            {Object.keys(this.state.contacts).length === 0 && (
-              <View
-                style={{
-                  flex: 1,
-                  justifyContent: "center",
-                  alignItems: "center"
-                }}
-              >
-                <SvgUri
-                  width="150"
-                  height="150"
-                  source={require("../../resources/svg/qr.svg")}
-                />
-                <Text style={{ color: "white", marginTop: 20 }}>
-                  No se han encontrado coincidencias..
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
+            </View>
+          </ScrollView>
+        )}
       </React.Fragment>
     );
   }
@@ -279,9 +439,9 @@ export default class Contacts extends Component {
 
 const styles = StyleSheet.create({
   container: {
-    height: "300%",
     backgroundColor: "black",
-    color: "white"
+    color: "white",
+    height: 2000
   },
   section: {
     justifyContent: "center"
@@ -332,6 +492,7 @@ const styles = StyleSheet.create({
   },
   headerEvent: {
     width: 300,
+    height: 50,
     fontFamily: "Helvetica",
     fontWeight: "normal",
     letterSpacing: 1.2,
@@ -380,10 +541,18 @@ const styles = StyleSheet.create({
     marginRight: "6%"
   },
   tag: {
+    fontSize: 13,
+    letterSpacing: 1.2,
+    paddingLeft: 10,
+    paddingRight: 10,
+    color: "black",
+    backgroundColor: "white"
+  },
+  tags: {
     fontFamily: "Helvetica",
     fontWeight: "normal",
-    color: "black",
-    backgroundColor: "white",
-    padding: 5
+    letterSpacing: 1.2,
+    paddingLeft: 10,
+    paddingRight: 10
   }
 });

@@ -29,12 +29,12 @@ const iron = {
   created: 1544383542000,
   duration: 10800000,
   id: "257084100",
-  name: "Ironhack, pon un programador en tu vida",
+  name: "HACKSHOW | Web + UX + Data ",
   rsvp_limit: 100,
   status: "upcoming",
   time: 1545321600000,
-  local_date: "2018-12-21",
-  local_time: "15:30 - 18:30",
+  local_date: "2019-01-18",
+  local_time: "18:00 - 20:00",
   updated: 1544466020000,
   utc_offset: 3600000,
   waitlist_count: 0,
@@ -67,11 +67,17 @@ const iron = {
     timezone: "Europe/Madrid"
   },
   link: "https://www.meetup.com/es/Cryptoinvest/events/257084100/",
-  description: `Disfruta este Viernes 20 de diciembre de la presentación del Bootcamp de Web.
+  description: `Ha llegado el día!!!
 
-    Una convivencia de 9 semanas aplicando diferentes lenguajes de programación dan como resultado aplicaciones visuales de gran calibre, listas para la implantación en empresas.`,
+  El Hackshow es el "Demoday" que se lleva acabo al final de cada bootcamp. Durante las ultimas semanas, nuestros ironhackers trabajan sobre sus propios proyectos! Entre todos los proyectazos, hemos hecho una selección y te los presentarán ellos mismos!
+  
+  Al final, se votará cual ha sido el mejor proyecto, nos tomaremos unas cerves y celebraremos el fin del bootcamp!
+  
+  En esta ocasión contaremos con estudiantes de las ediciones de Web Development, UX/UI y Data Analytics.
+  
+  Nos vemos allí!`,
   visibility: "public",
-  image: require("../resources/images/Tec/Tec1.jpg")
+  image: require("../resources/images/hack.png")
 };
 
 const { width: viewportWidth, height: viewportHeight } = Dimensions.get(
@@ -107,21 +113,19 @@ export default class Home extends React.Component {
       event,
       this.state.user._id
     );
-    console.log(participation);
 
     const participantsMeetup = await apiBack.GetParticipantsMeetup(event);
-    console.log(participantsMeetup);
 
-  
+    if (participantsMeetup !== null) {
+      trueParticipants = _.groupBy(participantsMeetup.participants, "participation");
+    }
 
     if (participation !== null) {
+
       parti = _.filter(participation.participants, [
         "contact._id",
         this.state.user._id
       ])[0].participation;
-      trueParticipants = _.groupBy(participantsMeetup.participants, "participation");
-
-      console.log(trueParticipants)
 
       this.setState({
         ...this.state,
@@ -131,12 +135,13 @@ export default class Home extends React.Component {
         trueParticipants: trueParticipants
       });
     } else {
+
       this.setState({
         ...this.state,
         eventParticipation: parti,
         modalVisible: visible,
         eventSelected: event,
-        trueParticipants: []
+        trueParticipants: trueParticipants !== null ? trueParticipants : []
       });
     }
   };
@@ -155,36 +160,37 @@ export default class Home extends React.Component {
   loadPosition = async () => {
     try {
       const token = await AsyncStorage.getItem("userToken");
-      const position = await this.getCurrentPosition();
+      // const position = await this.getCurrentPosition();
       const userProfile = await apiBack.GetUserProfile(token);
-      const categories = userProfile.data.selectedCategories;
-      const closeMeetups = await apiMeetups.GetCloseMeetups(
-        userProfile,
-        position
-      );
+      // const categories = userProfile.data.selectedCategories;
 
-      const meetups = closeMeetups
-        .map(meetups => meetups.data)
-        .map(events => events.events.slice(0, 2));
+      // const closeMeetups = await apiMeetups.GetCloseMeetups(
+      //   userProfile,
+      //   position
+      // );
 
-      categories.forEach((category, i) => {
-        meetups[i].forEach(meet => {
-          meet.image =
-            CategoryImages[category.shortname][
-              parseInt(
-                Math.random() * CategoryImages[category.shortname].length
-              )
-            ];
-        });
-      });
+      // const meetups = closeMeetups
+      //   .map(meetups => meetups.data)
+      //   .map(events => events.events.slice(0, 2));
+
+      // categories.forEach((category, i) => {
+      //   meetups[i].forEach(meet => {
+      //     meet.image =
+      //       CategoryImages[category.shortname][
+      //         parseInt(
+      //           Math.random() * CategoryImages[category.shortname].length
+      //         )
+      //       ];
+      //   });
+      // });
 
       joinMeetups = [];
 
-      meetups.forEach((meetup, i) => {
-        meetup.forEach(meet => {
-          joinMeetups.push(meet);
-        });
-      });
+      // meetups.forEach((meetup, i) => {
+      //   meetup.forEach(meet => {
+      //     joinMeetups.push(meet);
+      //   });
+      // });
 
       joinMeetups.unshift(iron);
       const meets = await apiBack.SaveMeetups(token, joinMeetups);
@@ -220,8 +226,7 @@ export default class Home extends React.Component {
   };
 
   _getParticipation = evento => {
-    console.log(evento);
-    // const participation = apiBack.GetParticipationStatus(this.state.eventId, this.state.userId)
+    const participation = apiBack.GetParticipationStatus(this.state.eventId, this.state.userId)
   };
 
   _keyExtractor = (item, index) => item.id;
@@ -302,9 +307,6 @@ export default class Home extends React.Component {
   };
 
   render() {
-    if (this.state.eventParticipation !== null) {
-      console.log(this.state.eventParticipation);
-    }
 
     return (
       <View style={styles.container}>
@@ -325,8 +327,8 @@ export default class Home extends React.Component {
           <View style={styles.slidesContainer}>
             {this.state.loadingContent === true && (
               <View>
-                <Button title="Salir" onPress={this._signOutAsync} />
-                <Text style={styles.text}>Buscando meetups cercanos..</Text>
+                {/* <Button onPress={this._signOutAsync}></Button> */}
+                <Text style={styles.text}>Buscando meetups...</Text>
               </View>
             )}
 

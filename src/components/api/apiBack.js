@@ -48,16 +48,16 @@ const apiBack = {
       .then(response => response.data);
   },
 
-  AddTag: (token, idContact , tags) => {
+  AddTag: (token, tags) => {
     return axios
-    .post(`${URL}/auth/addTags/`, {token: token, idContact: idContact, tags: tags})
+    .post(`${URL}/auth/addTags/`, {token: token, tags: tags})
       .then(response => response.data);
   },
 
-  AddParticipationMeetup: (meetup, idUser, participation) => {
-    return axios
-    .post(`${URL}/auth/addParticipationMeetup/`, {meetupId: meetup.id, idUser: idUser, participation: participation})
-      .then(response => response.data);
+  async AddParticipationMeetup(meetup, idUser, participation) {
+
+    const response = axios.post(`${URL}/auth/addParticipationMeetup/`, {meetupId: meetup, idUser: idUser, participation: participation})
+    return response;
   },
 
   async GetParticipationStatus(meetup, idUser) {
